@@ -1,0 +1,164 @@
+/* 代码块快捷插入 - 样式 */
+
+/* 语言选择 Modal */
+.qcb-picker .qcb-lang-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.qcb-picker .qcb-lang-item {
+  padding: 10px 12px;
+  text-align: center;
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.92em;
+  background: var(--background-modifier-form-field, #f5f5f5);
+  border: 1px solid var(--background-modifier-border, #ddd);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s;
+  color: var(--text-normal, currentColor);
+}
+
+.qcb-picker .qcb-lang-item:hover {
+  border-color: var(--interactive-accent, #7c3aed);
+  background: var(--interactive-accent-hover, rgba(124, 58, 237, 0.1));
+  transform: translateY(-1px);
+}
+
+.qcb-picker .qcb-lang-item:active {
+  transform: translateY(0);
+}
+
+/* 分隔线与描述 */
+.qcb-divider {
+  margin: 24px 0 16px 0;
+  border: none;
+  border-top: 1px solid var(--background-modifier-border, #ddd);
+}
+
+.qcb-desc {
+  color: var(--text-muted, #999);
+  font-size: 0.9em;
+  margin-bottom: 16px;
+}
+
+.qcb-desc code {
+  background: var(--background-modifier-border, #e0e0e0);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
+
+/* 语言选择 dropdown */
+.qcb-lang-select {
+  padding: 6px 8px;
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.88em;
+  background: var(--background-modifier-form-field, #fff);
+  border: 1px solid var(--background-modifier-border, #ddd);
+  border-radius: 4px;
+  color: var(--text-normal, currentColor);
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.qcb-lang-select:hover {
+  border-color: var(--interactive-accent, #7c3aed);
+}
+
+.qcb-lang-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent, #7c3aed);
+}
+
+/* 快捷键输入框 */
+.qcb-hotkey-input {
+  width: 130px;
+  padding: 6px 10px;
+  text-align: center;
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.88em;
+  background: var(--background-modifier-form-field, #fff);
+  border: 1px solid var(--background-modifier-border, #ddd);
+  border-radius: 4px;
+  color: var(--text-normal, currentColor);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.qcb-hotkey-input:hover {
+  border-color: var(--interactive-accent, #7c3aed);
+}
+
+.qcb-hotkey-input.recording {
+  border-color: var(--interactive-accent, #7c3aed);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover, rgba(124, 58, 237, 0.25));
+}
+
+.qcb-hotkey-input::placeholder {
+  color: var(--text-faint, #bbb);
+}
+
+/* 冲突提示 */
+.qcb-warning {
+  margin-top: 6px;
+  font-size: 0.85em;
+  min-height: 18px;
+}
+
+.qcb-warning.has-conflict {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(224, 82, 82, 0.1);
+  border-left: 3px solid var(--text-error, #e05252);
+}
+
+.qcb-conflict-label {
+  color: var(--text-error, #e05252);
+  font-weight: 600;
+}
+
+.qcb-conflict-name {
+  color: var(--text-normal, currentColor);
+  font-weight: 500;
+}
+
+.qcb-conflict-link {
+  color: var(--interactive-accent, #7c3aed);
+  cursor: pointer;
+  text-decoration: none;
+  margin-left: 6px;
+}
+
+.qcb-conflict-link:hover {
+  text-decoration: underline;
+}
+
+.qcb-ok {
+  color: var(--text-success, #4caf50);
+}
+
+/* 使用说明 */
+.qcb-tip {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--background-secondary, #f9f9f9);
+  border-radius: 6px;
+  border-left: 3px solid var(--interactive-accent, #7c3aed);
+  color: var(--text-muted, #666);
+  font-size: 0.88em;
+  line-height: 1.7;
+}
+
+.qcb-tip code {
+  background: var(--background-modifier-border, #e0e0e0);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
+
+.qcb-tip b {
+  color: var(--text-normal, currentColor);
+}

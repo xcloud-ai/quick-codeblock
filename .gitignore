@@ -1,0 +1,24 @@
+# Obsidian runtime data (用户本地设置，不入库)
+data.json
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output (if using TypeScript compilation)
+# 注意：本插件的 main.js 是手写纯 JS，需要入库
+# 如果改用 TS 编译流程，取消下面注释让 main.js 成为编译产物
+# main.js
