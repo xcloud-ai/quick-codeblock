@@ -1,9 +1,10 @@
-{
+﻿{
   "id": "quick-codeblock",
-  "name": "代码块快捷插入",
+  "name": "Quick CodeBlock",
   "version": "1.0.0",
   "minAppVersion": "1.4.0",
-  "description": "快捷插入代码块并自动定位光标。支持自定义语言、选中文本包裹、快捷键配置与冲突检测。",
+  "description": "Quickly insert code blocks with automatic cursor positioning. Supports custom languages, selection wrapping, hotkey configuration with conflict detection.",
   "author": "旭说云原生",
+  "authorUrl": "https://github.com/xcloud-ai",
   "isDesktopOnly": false
 }
