@@ -1,7 +1,7 @@
 {
   "id": "quick-codeblock",
-  "name": "代码块快捷插入",
-  "version": "1.0.0",
+  "name": "XU Quick CodeBlock",
+  "version": "1.1.0",
   "minAppVersion": "1.4.0",
   "description": "快捷插入代码块并自动定位光标。支持自定义语言、选中文本包裹、快捷键配置与冲突检测。",
   "author": "旭说云原生",
