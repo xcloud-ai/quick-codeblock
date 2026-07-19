@@ -7,6 +7,8 @@
  *   esbuild main.ts --bundle --external:obsidian --format=cjs --outfile=main.js
  *
  * 已提供编译好的 main.js，通常无需自行编译。
+ *
+ * 双语 UI（中文 / 英文），可在设置面板顶部切换界面语言。
  */
 import { App, Editor, Modal, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 
@@ -29,15 +31,134 @@ interface PluginSettings {
   defaultLanguage: string;
   languages: string;
   keepIndent: boolean;
+  language: "zh" | "en";
   hotkeyConfigs: HotkeyConfig[];
 }
 
 const PLUGIN_ID = "quick-codeblock";
 
+// ================================================================
+//  i18n (Bilingual support)  中英双语
+// ================================================================
+
+const I18N: Record<string, Record<string, string>> = {
+  zh: {
+    // Commands
+    cmd_insert_default: "插入代码块（{lang}）",
+    cmd_insert_pick: "插入代码块（选择语言）",
+    cmd_insert_lang: "插入代码块（{lang}）",
+    // Modal
+    modal_pick_title: "选择代码块语言",
+    // Settings - title
+    setting_title: "代码块快捷插入",
+    // Settings - language switcher
+    setting_language: "界面语言",
+    setting_language_desc: "选择设置面板的显示语言",
+    lang_zh: "中文",
+    lang_en: "English",
+    // Settings - basic
+    setting_default_lang: "默认语言",
+    setting_default_lang_desc: "主命令「插入代码块」使用的语言",
+    setting_lang_list: "语言列表",
+    setting_lang_list_desc: "每行一个语言，会为每个语言注册独立命令。修改后重新打开设置面板可刷新下方选项。",
+    setting_keep_indent: "保留选中内容缩进",
+    setting_keep_indent_desc: "选中文本包裹成代码块时，是否保留原有缩进",
+    // Settings - hotkeys section
+    sec_hotkeys: "快捷键设置",
+    hotkeys_desc: "为需要的语言配置快捷键。点击输入框后按下组合键即可设置，按 <code>Backspace</code> 或 <code>Esc</code> 清除。设置后自动检测冲突。",
+    btn_add_hotkey: "+ 添加快捷键配置",
+    hotkey_placeholder: "点击设置…",
+    // Settings - more hotkeys
+    setting_more_hotkeys: "更多快捷键设置",
+    setting_more_hotkeys_desc: "打开 Obsidian 系统的快捷键设置页面，可查看 / 修改所有命令的快捷键",
+    btn_open_hotkeys: "打开 Obsidian 快捷键设置",
+    notice_hotkeys_opened: "已打开快捷键设置，可在搜索框输入命令名查找",
+    notice_hotkeys_failed: "无法自动打开，请手动进入：设置 → 快捷键",
+    // Settings - tips
+    tip_title: "使用方法",
+    tip_1: "1. <code>Ctrl+P</code> 打开命令面板，搜索「插入代码块」",
+    tip_2: "2. 无选中文本时：插入空代码块，光标自动定位到块内",
+    tip_3: "3. 有选中文本时：用 <code>```lang</code> 包裹选中的内容",
+    tip_4: "4. 在上方「快捷键设置」区域，点击「+ 添加」为需要的语言配置快捷键",
+    tip_5: "5. 修改语言列表后，关闭再打开设置面板即可刷新选项",
+    // Hotkey config item
+    conflict_label: "⚠️ 冲突：",
+    conflict_link: "前往修改 ›",
+    no_conflict: "✓ 无冲突",
+    btn_delete_config: "删除此配置",
+    notice_cleared: "已清除：{lang} 快捷键",
+    notice_set_failed: "设置失败：{msg}",
+    notice_conflict: "⚠️ 「{hotkey}」与「{name}」冲突，点击警告中的「前往修改」处理",
+    notice_set: "已设置：{lang} → {hotkey}",
+    notice_search_conflict: "请在快捷键设置中搜索「{name}」查看并修改",
+    // Settings - reset
+    setting_reset: "恢复默认设置",
+    setting_reset_desc: "将所有设置恢复为默认值（界面语言选择会被保留）",
+    btn_reset: "重置",
+    notice_reset: "设置已恢复为默认值",
+  },
+  en: {
+    // Commands
+    cmd_insert_default: "Insert code block ({lang})",
+    cmd_insert_pick: "Insert code block (pick language)",
+    cmd_insert_lang: "Insert code block ({lang})",
+    // Modal
+    modal_pick_title: "Choose code block language",
+    // Settings - title
+    setting_title: "Quick CodeBlock",
+    // Settings - language switcher
+    setting_language: "UI Language",
+    setting_language_desc: "Select the display language for settings panel",
+    lang_zh: "中文",
+    lang_en: "English",
+    // Settings - basic
+    setting_default_lang: "Default language",
+    setting_default_lang_desc: "Language used by the main \"Insert code block\" command",
+    setting_lang_list: "Language list",
+    setting_lang_list_desc: "One language per line. An independent command is registered for each. Reopen the settings panel after editing to refresh options below.",
+    setting_keep_indent: "Keep selection indentation",
+    setting_keep_indent_desc: "Whether to preserve original indentation when wrapping selected text into a code block",
+    // Settings - hotkeys section
+    sec_hotkeys: "Hotkey Settings",
+    hotkeys_desc: "Configure hotkeys for the languages you need. Click the input box then press a key combo to set, press <code>Backspace</code> or <code>Esc</code> to clear. Conflicts are detected automatically.",
+    btn_add_hotkey: "+ Add hotkey config",
+    hotkey_placeholder: "Click to set…",
+    // Settings - more hotkeys
+    setting_more_hotkeys: "More hotkey settings",
+    setting_more_hotkeys_desc: "Open Obsidian's built-in hotkey settings to view / modify hotkeys for all commands",
+    btn_open_hotkeys: "Open Obsidian hotkey settings",
+    notice_hotkeys_opened: "Hotkey settings opened. Type a command name in the search box to find it.",
+    notice_hotkeys_failed: "Unable to open automatically. Please go to: Settings → Hotkeys",
+    // Settings - tips
+    tip_title: "Usage",
+    tip_1: "1. Press <code>Ctrl+P</code> to open the command palette and search for \"Insert code block\"",
+    tip_2: "2. With no selection: inserts an empty code block and places the cursor inside",
+    tip_3: "3. With a selection: wraps the selected text with <code>```lang</code>",
+    tip_4: "4. In the \"Hotkey Settings\" area above, click \"+ Add\" to configure hotkeys for languages you need",
+    tip_5: "5. After editing the language list, close and reopen the settings panel to refresh options",
+    // Hotkey config item
+    conflict_label: "⚠️ Conflict: ",
+    conflict_link: "Fix ›",
+    no_conflict: "✓ No conflict",
+    btn_delete_config: "Delete this config",
+    notice_cleared: "Cleared: {lang} hotkey",
+    notice_set_failed: "Failed to set: {msg}",
+    notice_conflict: "⚠️ \"{hotkey}\" conflicts with \"{name}\". Click \"Fix\" in the warning to resolve.",
+    notice_set: "Set: {lang} → {hotkey}",
+    notice_search_conflict: 'Search "{name}" in hotkey settings to view and modify it',
+    // Settings - reset
+    setting_reset: "Reset to defaults",
+    setting_reset_desc: "Restore all settings to default values (UI language choice is preserved)",
+    btn_reset: "Reset",
+    notice_reset: "Settings reset to defaults",
+  },
+};
+
 const DEFAULT_SETTINGS: PluginSettings = {
   defaultLanguage: "python",
   languages: "python\njavascript\nbash\nshell\nsql\njson\nyaml\ngo\nrust\njava\nhtml\ncss",
   keepIndent: true,
+  language: "zh",
   hotkeyConfigs: [{ lang: "python", hotkey: null }],
 };
 
@@ -115,6 +236,19 @@ function openHotkeysSettings(app: App): boolean {
 export default class QuickCodeBlockPlugin extends Plugin {
   settings!: PluginSettings;
 
+  // i18n helper —— 支持可选的 {placeholder} 参数替换
+  t(key: string, params?: Record<string, string>): string {
+    const lang = this.settings ? this.settings.language : "zh";
+    const dict = I18N[lang] || I18N.zh;
+    let text = dict[key] || key;
+    if (params) {
+      for (const k of Object.keys(params)) {
+        text = text.replace(new RegExp("\\{" + k + "\\}", "g"), params[k]);
+      }
+    }
+    return text;
+  }
+
   async onload(): Promise<void> {
     await this.loadSettings();
     this.registerCommands();
@@ -134,13 +268,13 @@ export default class QuickCodeBlockPlugin extends Plugin {
     const def = this.settings.defaultLanguage;
     this.addCommand({
       id: "insert-codeblock-default",
-      name: `插入代码块（${def}）`,
+      name: this.t("cmd_insert_default", { lang: def }),
       editorCallback: (editor: Editor) => this.insertCodeBlock(editor, def),
     });
 
     this.addCommand({
       id: "insert-codeblock-pick",
-      name: "插入代码块（选择语言）",
+      name: this.t("cmd_insert_pick"),
       editorCallback: (editor: Editor) => {
         const langs = this.getLanguages();
         new LanguagePickerModal(this.app, langs, (lang: string) => {
@@ -152,7 +286,7 @@ export default class QuickCodeBlockPlugin extends Plugin {
     for (const lang of this.getLanguages()) {
       this.addCommand({
         id: `insert-codeblock-${lang}`,
-        name: `插入代码块（${lang}）`,
+        name: this.t("cmd_insert_lang", { lang }),
         editorCallback: (editor: Editor) => this.insertCodeBlock(editor, lang),
       });
     }
@@ -233,7 +367,8 @@ class LanguagePickerModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("qcb-picker");
-    contentEl.createEl("h2", { text: "选择代码块语言" });
+    const plugin = (this.app as any).plugins.plugins[PLUGIN_ID] as QuickCodeBlockPlugin;
+    contentEl.createEl("h2", { text: plugin.t("modal_pick_title") });
     const grid = contentEl.createEl("div", { cls: "qcb-lang-grid" });
     for (const lang of this.languages) {
       const item = grid.createEl("div", { cls: "qcb-lang-item", text: lang });
@@ -257,14 +392,41 @@ class CodeBlockSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  // i18n helper —— 委托给 plugin
+  t(key: string, params?: Record<string, string>): string {
+    return this.plugin.t(key, params);
+  }
+
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "代码块快捷插入" });
+    containerEl.createEl("h2", { text: this.t("setting_title") });
 
+    // ---- 界面语言切换器（顶部）----
     new Setting(containerEl)
-      .setName("默认语言")
-      .setDesc("主命令「插入代码块」使用的语言")
+      .setName(this.t("setting_language"))
+      .setDesc(this.t("setting_language_desc"))
+      .addDropdown((dropdown) =>
+        dropdown
+          .addOption("zh", this.t("lang_zh"))
+          .addOption("en", this.t("lang_en"))
+          .setValue(this.plugin.settings.language)
+          .onChange(async (value) => {
+            this.plugin.settings.language = value as "zh" | "en";
+            await this.plugin.saveSettings();
+            // 重新注册命令（使命令名跟随语言）
+            (this.plugin as any).registerCommands();
+            // 重新渲染设置面板
+            this.display();
+          })
+      );
+
+    containerEl.createEl("hr", { cls: "qcb-divider" });
+
+    // ---- 基础设置 ----
+    new Setting(containerEl)
+      .setName(this.t("setting_default_lang"))
+      .setDesc(this.t("setting_default_lang_desc"))
       .addText((text) =>
         text
           .setPlaceholder("python")
@@ -276,8 +438,8 @@ class CodeBlockSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("语言列表")
-      .setDesc("每行一个语言，会为每个语言注册独立命令。修改后重新打开设置面板可刷新下方选项。")
+      .setName(this.t("setting_lang_list"))
+      .setDesc(this.t("setting_lang_list_desc"))
       .addTextArea((text) => {
         text
           .setPlaceholder("python\njavascript\nbash\n...")
@@ -291,8 +453,8 @@ class CodeBlockSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("保留选中内容缩进")
-      .setDesc("选中文本包裹成代码块时，是否保留原有缩进")
+      .setName(this.t("setting_keep_indent"))
+      .setDesc(this.t("setting_keep_indent_desc"))
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.keepIndent)
@@ -302,13 +464,12 @@ class CodeBlockSettingTab extends PluginSettingTab {
           })
       );
 
+    // ---- 快捷键设置区域 ----
     containerEl.createEl("hr", { cls: "qcb-divider" });
-    containerEl.createEl("h3", { text: "快捷键设置" });
+    containerEl.createEl("h3", { text: this.t("sec_hotkeys") });
 
     const desc = containerEl.createEl("p", { cls: "qcb-desc" });
-    desc.innerHTML =
-      "为需要的语言配置快捷键。点击输入框后按下组合键即可设置，" +
-      "按 <code>Backspace</code> 或 <code>Esc</code> 清除。设置后自动检测冲突。";
+    desc.innerHTML = this.t("hotkeys_desc");
 
     const configs = this.plugin.settings.hotkeyConfigs;
     for (let i = 0; i < configs.length; i++) {
@@ -317,7 +478,7 @@ class CodeBlockSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).addButton((btn) =>
       btn
-        .setButtonText("+ 添加快捷键配置")
+        .setButtonText(this.t("btn_add_hotkey"))
         .setCta()
         .onClick(async () => {
           this.plugin.settings.hotkeyConfigs.push({
@@ -332,29 +493,51 @@ class CodeBlockSettingTab extends PluginSettingTab {
     containerEl.createEl("hr", { cls: "qcb-divider" });
 
     new Setting(containerEl)
-      .setName("更多快捷键设置")
-      .setDesc("打开 Obsidian 系统的快捷键设置页面，可查看 / 修改所有命令的快捷键")
+      .setName(this.t("setting_more_hotkeys"))
+      .setDesc(this.t("setting_more_hotkeys_desc"))
       .addButton((btn) =>
         btn
-          .setButtonText("打开 Obsidian 快捷键设置")
+          .setButtonText(this.t("btn_open_hotkeys"))
           .onClick(() => {
             const ok = openHotkeysSettings(this.app);
             if (ok) {
-              new Notice("已打开快捷键设置，可在搜索框输入命令名查找", 6000);
+              new Notice(this.t("notice_hotkeys_opened"), 6000);
             } else {
-              new Notice("无法自动打开，请手动进入：设置 → 快捷键", 6000);
+              new Notice(this.t("notice_hotkeys_failed"), 6000);
             }
           })
       );
 
     const tip = containerEl.createEl("div", { cls: "qcb-tip" });
     tip.innerHTML =
-      "<b>使用方法</b><br>" +
-      "1. <code>Ctrl+P</code> 打开命令面板，搜索「插入代码块」<br>" +
-      "2. 无选中文本时：插入空代码块，光标自动定位到块内<br>" +
-      "3. 有选中文本时：用 <code>```lang</code> 包裹选中的内容<br>" +
-      "4. 在上方「快捷键设置」区域，点击「+ 添加」为需要的语言配置快捷键<br>" +
-      "5. 修改语言列表后，关闭再打开设置面板即可刷新选项";
+      "<b>" + this.t("tip_title") + "</b><br>" +
+      this.t("tip_1") + "<br>" +
+      this.t("tip_2") + "<br>" +
+      this.t("tip_3") + "<br>" +
+      this.t("tip_4") + "<br>" +
+      this.t("tip_5");
+
+    // ---- 重置（保留语言选择）----
+    containerEl.createEl("hr", { cls: "qcb-divider" });
+
+    new Setting(containerEl)
+      .setName(this.t("setting_reset"))
+      .setDesc(this.t("setting_reset_desc"))
+      .addButton((btn) =>
+        btn
+          .setButtonText(this.t("btn_reset"))
+          .setWarning()
+          .onClick(async () => {
+            const savedLang = this.plugin.settings.language;
+            this.plugin.settings = Object.assign({}, DEFAULT_SETTINGS);
+            this.plugin.settings.language = savedLang;
+            await this.plugin.saveSettings();
+            // 重新注册命令（命令名跟随语言）
+            (this.plugin as any).registerCommands();
+            this.display();
+            new Notice(this.t("notice_reset"), 2000);
+          })
+      );
   }
 
   private createHotkeyConfigItem(index: number): void {
@@ -374,7 +557,7 @@ class CodeBlockSettingTab extends PluginSettingTab {
     const inputEl = setting.controlEl.createEl("input", {
       type: "text",
       cls: "qcb-hotkey-input",
-      attr: { readonly: true, placeholder: "点击设置…" },
+      attr: { readonly: true, placeholder: this.t("hotkey_placeholder") },
     });
     inputEl.value = formatHotkey(config.hotkey);
 
@@ -388,21 +571,21 @@ class CodeBlockSettingTab extends PluginSettingTab {
       const conflict = findConflict(this.app, currentFullId, hotkey);
       if (conflict) {
         warningEl.addClass("has-conflict");
-        warningEl.createEl("span", { text: "⚠️ 冲突：", cls: "qcb-conflict-label" });
+        warningEl.createEl("span", { text: this.t("conflict_label"), cls: "qcb-conflict-label" });
         warningEl.createEl("span", { text: conflict.commandName, cls: "qcb-conflict-name" });
         warningEl.createEl("span", { text: "  " });
         const link = warningEl.createEl("a", {
-          text: "前往修改 ›",
+          text: this.t("conflict_link"),
           cls: "qcb-conflict-link",
           attr: { href: "#" },
         });
         link.addEventListener("click", (ev: MouseEvent) => {
           ev.preventDefault();
           openHotkeysSettings(this.app);
-          new Notice(`请在快捷键设置中搜索「${conflict.commandName}」查看并修改`, 8000);
+          new Notice(this.t("notice_search_conflict", { name: conflict.commandName }), 8000);
         });
       } else {
-        warningEl.createEl("span", { text: "✓ 无冲突", cls: "qcb-ok" });
+        warningEl.createEl("span", { text: this.t("no_conflict"), cls: "qcb-ok" });
       }
     };
 
@@ -443,7 +626,7 @@ class CodeBlockSettingTab extends PluginSettingTab {
         inputEl.value = "";
         await plugin.saveSettings();
         updateWarning(null, config.lang);
-        new Notice(`已清除：${config.lang} 快捷键`, 2000);
+        new Notice(this.t("notice_cleared", { lang: config.lang }), 2000);
         return;
       }
 
@@ -467,7 +650,7 @@ class CodeBlockSettingTab extends PluginSettingTab {
         (this.app as any).hotkeyManager.setHotkeys(bindId, [hotkey]);
       } catch (e: any) {
         console.error(`[quick-codeblock] 设置 ${config.lang} 快捷键失败:`, e);
-        new Notice(`设置失败：${e.message}`, 5000);
+        new Notice(this.t("notice_set_failed", { msg: e.message }), 5000);
         return;
       }
 
@@ -477,18 +660,18 @@ class CodeBlockSettingTab extends PluginSettingTab {
       const conflict = findConflict(this.app, bindId, hotkey);
       if (conflict) {
         new Notice(
-          `⚠️ 「${formatHotkey(hotkey)}」与「${conflict.commandName}」冲突，点击警告中的「前往修改」处理`,
+          this.t("notice_conflict", { hotkey: formatHotkey(hotkey), name: conflict.commandName }),
           8000
         );
       } else {
-        new Notice(`已设置：${config.lang} → ${formatHotkey(hotkey)}`, 2000);
+        new Notice(this.t("notice_set", { lang: config.lang, hotkey: formatHotkey(hotkey) }), 2000);
       }
     });
 
     setting.addExtraButton((btn) =>
       btn
         .setIcon("trash")
-        .setTooltip("删除此配置")
+        .setTooltip(this.t("btn_delete_config"))
         .onClick(async () => {
           if (config.hotkey) {
             try {
