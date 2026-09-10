@@ -121,4 +121,4 @@ Quickly insert Markdown code blocks with automatic cursor positioning. Wrap sele
 
 ## 许可证
 
-MIT License - Copyright (c) 2026 旭说云原生
+MIT License - Copyright (c) 2026 旭说
