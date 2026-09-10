@@ -1,29 +1,30 @@
 # 代码块快捷插入
 
-快捷插入 Markdown 代码块，光标自动定位到块内。支持自定义语言、选中文本一键包裹、快捷键配置与冲突检测，替代 Templater 的代码块模板，无需 Templater 依赖。
+> [!NOTE] 中文说明
+> **代码块快捷插入**：快捷插入 Markdown 代码块，光标自动定位到块内，支持选中文本一键包裹、多语言独立命令与系统原生快捷键配置。
+
+快捷插入 Markdown 代码块，光标自动定位到块内。选中文本一键包裹，为每个语言注册独立命令，快捷键在 Obsidian 系统快捷键设置中配置，替代 Templater 的代码块模板，无需 Templater 依赖。
 
 > English description below for review purposes. / 以下为英文说明，用于过审。
 
-Quickly insert Markdown code blocks with automatic cursor positioning. Supports custom languages, selected text wrapping, hotkey configuration and conflict detection. Replaces Templater code block templates without dependency.
+Quickly insert Markdown code blocks with automatic cursor positioning. Wrap selected text with one command, one independent command per language, hotkeys configured in Obsidian's native Hotkeys settings. Replaces Templater code block templates without dependency.
 
 ## 功能特性
 
 - **快捷插入代码块**：插入 ` ```lang ` 代码块，光标自动定位到块内空行，直接开始写代码
-- **选中文本包裹**：选中一段文字，触发命令，自动用代码块包裹
-- **自定义语言列表**：默认含 python / javascript / bash / shell / sql / json / yaml / go / rust / java / html / css，可自行增删
-- **语言选择弹窗**：不想记快捷键？用「选择语言」命令弹出列表点选
-- **快捷键自定义**：在插件设置面板里直接为需要的语言配置快捷键，无需去系统设置里翻
-- **快捷键冲突检测**：设置快捷键时即时检测是否与其他命令冲突，冲突显示警告并提供跳转入口
+- **选中文本包裹**：选中一段文字，触发命令，自动用代码块包裹（保留原有缩进）
+- **独立语言命令**：在设置中添加语言，每个语言注册独立命令，可分别绑定快捷键（默认内置 python / shell / yaml / json）
+- **语言选择弹窗**：「插入代码块（选择语言）」命令弹出列表点选，未配置语言时插入无语言代码块
+- **系统原生快捷键**：设置面板一键「打开设置快捷键」，自动定位到系统快捷键设置页对应命令，冲突由系统原生提示
 - **智能换行**：光标前后有内容时自动处理换行，不会粘连到已有文字
 
 ### Features
 
 - Quick code block insertion with auto cursor positioning
-- Selected text wrapping with code block
-- Custom language list (default: python, javascript, bash, shell, sql, json, yaml, go, rust, java, html, css)
-- Language picker modal for easy selection
-- Custom hotkey configuration in plugin settings
-- Hotkey conflict detection with jump-to-settings link
+- Selected text wrapping (indentation preserved)
+- One independent command per language added in settings (built-in defaults: python, shell, yaml, json), each bindable to its own hotkey
+- Language picker modal for easy selection (falls back to a plain code block when no language is configured)
+- Native hotkey settings integration: one click to open and locate the command; conflicts are flagged by Obsidian itself
 - Smart line break handling
 
 ## 安装
@@ -58,33 +59,32 @@ Quickly insert Markdown code blocks with automatic cursor positioning. Supports 
 ### 插入代码块
 
 1. `Ctrl+P` 打开命令面板，搜索「插入代码块」
-2. 选择对应语言的命令（如「插入代码块（python）」）
+2. 选择对应语言的命令（如「插入代码块（python）」），或用「插入代码块（选择语言）」弹窗点选
 3. 无选中文本时：插入空代码块，光标自动定位到块内
 4. 有选中文本时：用 ` ```lang ` 包裹选中的内容
 
 ### 配置快捷键
 
 1. 打开插件设置（设置 → 社区插件 → XU Quick CodeBlock → 选项）
-2. 在「快捷键设置」区域，默认有一项（python）
-3. 点击「+ 添加快捷键配置」增加新项
-4. 每项可选择语言（dropdown）+ 设置快捷键 + 删除
-5. 点击快捷键输入框，按下组合键即可设置；按 `Backspace` 或 `Esc` 清除
-6. 设置后自动检测冲突，有冲突会显示红色警告和「前往修改」链接
+2. 在「快捷键」区域点击右上角 **+**，输入语言名（如 `python`）
+3. 点击该语言对应的「打开设置快捷键」，自动跳转到 Obsidian 快捷键设置页，并搜索定位到「XU Quick CodeBlock: 插入代码块（python）」
+4. 点击该命令行右侧的 **+** 录制快捷键即可（重复快捷键系统会原生提示冲突）
+5. 不需要的语言点击 🗑 删除
 
 ### Usage
 
-1. Press `Ctrl+P` to open command palette, search for "Insert code block"
-2. Select the language command (e.g. "Insert code block (python)")
-3. Without selection: inserts empty code block with cursor inside
-4. With selection: wraps selected text with ` ```lang `
+1. Press `Ctrl+P` to open the command palette and search for "Insert code block"
+2. Select the language command (e.g. "Insert code block (python)"), or use "Insert code block (pick language)" to choose from a modal
+3. Without selection: inserts an empty code block with the cursor inside
+4. With selection: wraps the selected text with ` ```lang `
 
 ### Hotkey Configuration
 
 1. Open plugin settings (Settings → Community Plugins → XU Quick CodeBlock → Options)
-2. Default has one item (python), click "+ Add" to add more
-3. Each item: select language (dropdown) + set hotkey + delete
-4. Click hotkey input, press key combination to set; press `Backspace` or `Esc` to clear
-5. Auto conflict detection with red warning and "Go to settings" link
+2. Click **+** in the "Hotkeys" section and type a language name (e.g. `python`)
+3. Click "Open hotkey settings" next to it — Obsidian's native hotkeys page opens with "XU Quick CodeBlock: Insert code block (python)" located in the search box
+4. Click **+** on that command row and record the hotkey (duplicates are flagged natively by Obsidian)
+5. Click 🗑 to delete languages you don't need
 
 ## 替代 Templater
 
@@ -96,32 +96,28 @@ Quickly insert Markdown code blocks with automatic cursor positioning. Supports 
 | 插入 ```python + 光标定位 | `tp.file.cursor()` | 自动计算行号定位 |
 | 多语言 | 要写多个模板 | 一个插件搞定 |
 | 选中文本包裹 | 不支持 | 支持 |
-| 快捷键管理 | 不支持 | 内置配置 + 冲突检测 |
+| 快捷键管理 | 不支持 | 系统原生快捷键设置，冲突原生提示 |
 
 ## 设置说明
 
 | 设置项 | 说明 |
 |--------|------|
-| 默认语言 | 主命令「插入代码块」使用的语言 |
-| 语言列表 | 每行一个，为每个语言注册独立命令 |
-| 保留选中内容缩进 | 选中文本包裹时是否保留原有缩进 |
-| 快捷键设置 | 为需要的语言配置快捷键（默认一项，可自行添加） |
+| 快捷键 | 点击 **+** 添加语言，每个语言注册独立命令；输入语言名后点「打开设置快捷键」一键跳转系统快捷键设置页并定位到对应命令 |
+| 使用文档 | GitHub 仓库链接，查看完整使用说明 |
 
 ## 命令列表
 
 | 命令 | 作用 |
 |------|------|
-| 插入代码块（python） | 主命令，用默认语言 |
-| 插入代码块（选择语言） | 弹出列表选择语言 |
-| 插入代码块（javascript） | 每个预设语言各一个命令 |
-| ... | 语言列表里的每个语言都会注册 |
+| 插入代码块（选择语言） | 弹出列表选择语言（未配置语言时插入无语言代码块） |
+| 插入代码块（python） | 设置中添加的每个语言都会注册一个独立命令，可分别绑定快捷键 |
 
 ## 技术说明
 
 - 纯 JavaScript 实现（`main.js`），无需编译，直接可用
 - `main.ts` 为 TypeScript 源码参考，供二次开发使用
-- 快捷键通过 `hotkeyManager.setHotkeys` 绑定，与 Obsidian 系统快捷键互通
-- 卸载插件时自动清除快捷键绑定，保持 `hotkeys.json` 干净
+- 快捷键由 Obsidian 原生快捷键系统（`hotkeys.json`）持久化；旧版 data.json 自定义快捷键在启动时自动迁移到原生配置
+- 兼容移动端（`isDesktopOnly: false`）
 
 ## 许可证
 
