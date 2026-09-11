@@ -98,7 +98,7 @@ const I18N = {
 };
 
 const DEFAULT_SETTINGS = {
-  langs: ["python", "shell", "yaml", "json"],
+  langs: ["python", "shell", "json", "yaml"],
   language: "zh", // "zh" or "en"
 };
 

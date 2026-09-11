@@ -107,7 +107,7 @@ const I18N: Record<string, Record<string, string>> = {
 };
 
 const DEFAULT_SETTINGS: PluginSettings = {
-  langs: ["python", "shell", "yaml", "json"],
+  langs: ["python", "shell", "json", "yaml"],
   language: "zh",
 };
 
