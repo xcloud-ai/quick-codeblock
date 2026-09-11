@@ -43,7 +43,7 @@ const I18N: Record<string, Record<string, string>> = {
     // Modal
     modal_pick_title: "选择代码块语言",
     // Settings - title
-    setting_title: "代码块快捷插入",
+    setting_title: "XU Quick CodeBlock（代码块快捷插入）",
     // Settings - language switcher
     setting_language: "界面语言",
     setting_language_desc: "选择设置面板的显示语言",
@@ -77,7 +77,7 @@ const I18N: Record<string, Record<string, string>> = {
     // Modal
     modal_pick_title: "Choose code block language",
     // Settings - title
-    setting_title: "Quick CodeBlock",
+    setting_title: "XU Quick CodeBlock",
     // Settings - language switcher
     setting_language: "UI Language",
     setting_language_desc: "Select the display language for settings panel",

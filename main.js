@@ -32,7 +32,7 @@ const I18N = {
     // Modal
     modal_pick_title: "选择代码块语言",
     // Settings - standard header
-    setting_title: "代码块快捷插入",
+    setting_title: "XU Quick CodeBlock（代码块快捷插入）",
     setting_header_desc: "快捷插入代码块并自动定位光标，选中文本自动包裹，每个语言一个独立命令，可在 Obsidian 快捷键设置中自定义绑定。",
     // Settings - language switcher
     setting_language: "界面语言",
@@ -67,7 +67,7 @@ const I18N = {
     // Modal
     modal_pick_title: "Choose code block language",
     // Settings - standard header
-    setting_title: "Quick CodeBlock",
+    setting_title: "XU Quick CodeBlock",
     setting_header_desc: "Quickly insert code blocks with cursor auto-positioning, wraps selected text, and registers one command per language for custom hotkey binding in Obsidian.",
     // Settings - language switcher
     setting_language: "UI Language",
