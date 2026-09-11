@@ -388,7 +388,8 @@ class CodeBlockSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl("h2", { text: this.t("setting_title") });
+    // 标准头（官方要求 setHeading，禁止直接创建 h2/h3）
+    new Setting(containerEl).setName(this.t("setting_title")).setHeading();
     containerEl.createDiv({ cls: "qcb-desc", text: this.t("setting_header_desc") });
 
     // ---- 界面语言切换器（顶部）----
