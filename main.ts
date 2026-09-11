@@ -304,7 +304,9 @@ export default class QuickCodeBlockPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const data = ((await this.loadData()) || {}) as Record<string, any>;
     let langs: string[];
-    if (Array.isArray(data.langs)) {
+    // 是否显式配置过语言（全新安装 data 为空对象, 不显式配置）
+    const hasExplicitLangs = Array.isArray(data.langs);
+    if (hasExplicitLangs) {
       // 新版字段：即使为空数组也尊重（用户可能有意清空所有语言）
       langs = data.langs as string[];
     } else {
@@ -335,6 +337,10 @@ export default class QuickCodeBlockPlugin extends Plugin {
     for (const s of langs) {
       const t = String(s == null ? "" : s).trim();
       if (t && !normalized.includes(t)) normalized.push(t);
+    }
+    // 全新安装 / 旧版迁移后为空 → 回退默认四语言（显式清空的不动）
+    if (!hasExplicitLangs && normalized.length === 0) {
+      normalized.push(...DEFAULT_SETTINGS.langs);
     }
     this.settings = {
       langs: normalized,

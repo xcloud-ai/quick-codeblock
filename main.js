@@ -31,8 +31,9 @@ const I18N = {
     cmd_insert_lang: "插入代码块（{lang}）",
     // Modal
     modal_pick_title: "选择代码块语言",
-    // Settings - title
+    // Settings - standard header
     setting_title: "代码块快捷插入",
+    setting_header_desc: "快捷插入代码块并自动定位光标，选中文本自动包裹，每个语言一个独立命令，可在 Obsidian 快捷键设置中自定义绑定。",
     // Settings - language switcher
     setting_language: "界面语言",
     setting_language_desc: "选择设置面板的显示语言",
@@ -65,8 +66,9 @@ const I18N = {
     cmd_insert_lang: "Insert code block ({lang})",
     // Modal
     modal_pick_title: "Choose code block language",
-    // Settings - title
+    // Settings - standard header
     setting_title: "Quick CodeBlock",
+    setting_header_desc: "Quickly insert code blocks with cursor auto-positioning, wraps selected text, and registers one command per language for custom hotkey binding in Obsidian.",
     // Settings - language switcher
     setting_language: "UI Language",
     setting_language_desc: "Select the display language for settings panel",
@@ -293,7 +295,9 @@ class QuickCodeBlockPlugin extends Plugin {
   async loadSettings() {
     const data = (await this.loadData()) || {};
     let langs;
-    if (Array.isArray(data.langs)) {
+    // 是否显式配置过语言（全新安装 data 为空对象, 不显式配置）
+    const hasExplicitLangs = Array.isArray(data.langs);
+    if (hasExplicitLangs) {
       // 新版字段：即使为空数组也尊重（用户可能有意清空所有语言）
       langs = data.langs;
     } else {
@@ -324,6 +328,10 @@ class QuickCodeBlockPlugin extends Plugin {
     for (const s of langs) {
       const t = String(s == null ? "" : s).trim();
       if (t && !normalized.includes(t)) normalized.push(t);
+    }
+    // 全新安装 / 旧版迁移后为空 → 回退默认四语言（显式清空的不动）
+    if (!hasExplicitLangs && normalized.length === 0) {
+      normalized.push(...DEFAULT_SETTINGS.langs);
     }
     this.settings = {
       langs: normalized,
@@ -381,6 +389,7 @@ class CodeBlockSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     containerEl.createEl("h2", { text: this.t("setting_title") });
+    containerEl.createDiv({ cls: "qcb-desc", text: this.t("setting_header_desc") });
 
     // ---- 界面语言切换器（顶部）----
     new Setting(containerEl)
