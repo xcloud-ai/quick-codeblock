@@ -6,6 +6,9 @@
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 8px;
   margin-top: 12px;
+  /* 语言较多时限高滚动，避免弹窗溢出屏幕 */
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 .qcb-picker .qcb-lang-item {

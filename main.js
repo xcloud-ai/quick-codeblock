@@ -170,6 +170,9 @@ function locateHotkeySearch(app, query) {
 //  插件主类
 // ================================================================
 class QuickCodeBlockPlugin extends Plugin {
+  // 当前会话已注册的语言命令 id（registerCommands 时 diff 清理失效命令）
+  langCommandIds = new Set();
+
   // i18n helper —— 支持可选的 {placeholder} 参数替换
   t(key, params) {
     const lang = this.settings ? this.settings.language : "zh";
@@ -188,6 +191,28 @@ class QuickCodeBlockPlugin extends Plugin {
     await this.migrateLegacyHotkeys();
     this.registerCommands();
     this.addSettingTab(new CodeBlockSettingTab(this.app, this));
+  }
+
+  onunload() {
+    // 立即落盘待写的语言名输入，避免退出时丢输入
+    this.flushLangSettings();
+  }
+
+  // 语言名输入防抖：停止输入 400ms 后再写盘 + 重注册命令（避免每击键写盘与全量重建）
+  debouncedSaveLangSettings() {
+    if (this._langSaveTimer) clearTimeout(this._langSaveTimer);
+    this._langSaveTimer = setTimeout(async () => {
+      this._langSaveTimer = null;
+      await this.saveSettings();
+      this.registerCommands();
+    }, 400);
+  }
+
+  flushLangSettings() {
+    if (!this._langSaveTimer) return;
+    clearTimeout(this._langSaveTimer);
+    this._langSaveTimer = null;
+    this.saveSettings();
   }
 
   registerCommands() {
@@ -209,13 +234,28 @@ class QuickCodeBlockPlugin extends Plugin {
 
     // 2. 为设置里的每个语言注册独立命令
     //    快捷键由用户在 Obsidian 原生「快捷键」设置页配置（原生 hotkeys.json 持久化）
+    const newIds = new Set();
     for (const lang of this.getLanguages()) {
+      const id = `insert-codeblock-${lang}`;
+      newIds.add(id);
       this.addCommand({
-        id: `insert-codeblock-${lang}`,
+        id: id,
         name: this.t("cmd_insert_lang", { lang: lang }),
         editorCallback: (editor) => this.insertCodeBlock(editor, lang),
       });
     }
+
+    // 3. 清理失效语言命令：删除/改名语言后旧命令不再残留在面板与快捷键列表
+    if (this.langCommandIds) {
+      for (const oldId of this.langCommandIds) {
+        if (!newIds.has(oldId)) {
+          try {
+            this.app.commands.removeCommand(`${PLUGIN_ID}:${oldId}`);
+          } catch (e) {}
+        }
+      }
+    }
+    this.langCommandIds = newIds;
   }
 
   // ================================================================
@@ -231,6 +271,7 @@ class QuickCodeBlockPlugin extends Plugin {
     const hm = this.app.hotkeyManager;
     if (!hm) return;
     let migrated = 0;
+    let failed = 0;
     for (const { lang, hotkey } of list) {
       const fullId = `${PLUGIN_ID}:insert-codeblock-${lang}`;
       try {
@@ -240,13 +281,24 @@ class QuickCodeBlockPlugin extends Plugin {
         hm.setHotkeys(fullId, [hotkey]);
         migrated++;
       } catch (e) {
+        failed++;
         console.error(`[quick-codeblock] 迁移 ${lang} 快捷键失败:`, e);
       }
     }
-    if (migrated > 0 && typeof hm.save === "function") {
-      try {
-        Promise.resolve(hm.save()).catch(() => {});
-      } catch (e) {}
+    // 全部旧条目已落定（迁移成功或原生已有绑定）→ 清理 data.json 旧版死键：
+    // 不清理的话，用户删掉迁移来的快捷键后重启会被重新绑回
+    if (failed === 0) {
+      let persisted = migrated === 0; // 原生已有 = hotkeys.json 早已持久化
+      if (migrated > 0 && typeof hm.save === "function") {
+        try {
+          await Promise.resolve(hm.save());
+          persisted = true;
+        } catch (e) {
+          persisted = false;
+        }
+      }
+      // 仅在原生配置确认落盘后清键；保存失败保留死键下次重试
+      if (persisted) await this.saveSettings();
     }
     this.legacyHotkeys = [];
   }
@@ -258,8 +310,18 @@ class QuickCodeBlockPlugin extends Plugin {
     const selection = editor.getSelection();
 
     if (selection) {
-      // 保留选中内容原样（含缩进）
-      const block = "```" + lang + "\n" + selection + "\n```";
+      // 包裹选中：与无选中路径对齐处理换行——
+      // 选区起点同行前有内容 / 终点同行后有内容时补 \n，避免代码栅栏嵌进段落中间导致渲染破损
+      const from = editor.getCursor("from");
+      const to = editor.getCursor("to");
+      const beforeText = editor.getLine(from.line).substring(0, from.ch);
+      const afterText = editor.getLine(to.line).substring(to.ch);
+      // 选区终点恰在行首：尾部 \n 只是行分隔符（由包裹重新提供），去掉一个防块内双空行
+      let body = selection;
+      if (to.ch === 0 && body.endsWith("\n")) body = body.slice(0, -1);
+      let block = "```" + lang + "\n" + body + "\n```";
+      if (beforeText.trim() !== "") block = "\n" + block;
+      if (afterText.trim() !== "") block = block + "\n";
       editor.replaceSelection(block);
       return;
     }
@@ -490,8 +552,8 @@ class CodeBlockSettingTab extends PluginSettingTab {
       text.onChange(async (value) => {
         const v = value.trim();
         plugin.settings.langs[index] = v;
-        await plugin.saveSettings();
-        if (v) plugin.registerCommands(); // 空值不注册（命令 id 非法）
+        // 防抖写盘；停止输入后统一重注册（空值不注册，diff 同时清掉对应旧命令）
+        plugin.debouncedSaveLangSettings();
       });
     });
 
@@ -521,6 +583,8 @@ class CodeBlockSettingTab extends PluginSettingTab {
         .onClick(async () => {
           plugin.settings.langs.splice(index, 1);
           await plugin.saveSettings();
+          // 立即重注册，diff 清掉被删语言的命令（否则旧命令仍可触发）
+          plugin.registerCommands();
           this.display();
         })
     );

@@ -44,6 +44,7 @@ const I18N: Record<string, Record<string, string>> = {
     modal_pick_title: "选择代码块语言",
     // Settings - title
     setting_title: "XU Quick CodeBlock（代码块快捷插入）",
+    setting_header_desc: "快捷插入代码块并自动定位光标，选中文本自动包裹，每个语言一个独立命令，可在 Obsidian 快捷键设置中自定义绑定。",
     // Settings - language switcher
     setting_language: "界面语言",
     setting_language_desc: "选择设置面板的显示语言",
@@ -78,6 +79,7 @@ const I18N: Record<string, Record<string, string>> = {
     modal_pick_title: "Choose code block language",
     // Settings - title
     setting_title: "XU Quick CodeBlock",
+    setting_header_desc: "Quickly insert code blocks with cursor auto-positioning, wraps selected text, and registers one command per language for custom hotkey binding in Obsidian.",
     // Settings - language switcher
     setting_language: "UI Language",
     setting_language_desc: "Select the display language for settings panel",
@@ -179,6 +181,10 @@ export default class QuickCodeBlockPlugin extends Plugin {
   settings!: PluginSettings;
   /** 旧版 data.json 中的自定义快捷键（migrateLegacyHotkeys 消费后清空） */
   legacyHotkeys: LegacyHotkeyBinding[] = [];
+  /** 当前会话已注册的语言命令 id（registerCommands 时 diff 清理失效命令） */
+  langCommandIds: Set<string> = new Set();
+  /** 语言名输入防抖定时器 */
+  private _langSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
   // i18n helper —— 支持可选的 {placeholder} 参数替换
   t(key: string, params?: Record<string, string>): string {
@@ -200,6 +206,28 @@ export default class QuickCodeBlockPlugin extends Plugin {
     this.addSettingTab(new CodeBlockSettingTab(this.app, this));
   }
 
+  onunload(): void {
+    // 立即落盘待写的语言名输入，避免退出时丢输入
+    this.flushLangSettings();
+  }
+
+  // 语言名输入防抖：停止输入 400ms 后再写盘 + 重注册命令（避免每击键写盘与全量重建）
+  debouncedSaveLangSettings(): void {
+    if (this._langSaveTimer) clearTimeout(this._langSaveTimer);
+    this._langSaveTimer = setTimeout(async () => {
+      this._langSaveTimer = null;
+      await this.saveSettings();
+      this.registerCommands();
+    }, 400);
+  }
+
+  flushLangSettings(): void {
+    if (!this._langSaveTimer) return;
+    clearTimeout(this._langSaveTimer);
+    this._langSaveTimer = null;
+    this.saveSettings();
+  }
+
   registerCommands(): void {
     // 1. 选择语言命令（主入口；未配置语言时插入无语言代码块）
     this.addCommand({
@@ -219,13 +247,28 @@ export default class QuickCodeBlockPlugin extends Plugin {
 
     // 2. 为设置里的每个语言注册独立命令
     //    快捷键由用户在 Obsidian 原生「快捷键」设置页配置（原生 hotkeys.json 持久化）
+    const newIds = new Set<string>();
     for (const lang of this.getLanguages()) {
+      const id = `insert-codeblock-${lang}`;
+      newIds.add(id);
       this.addCommand({
-        id: `insert-codeblock-${lang}`,
+        id,
         name: this.t("cmd_insert_lang", { lang }),
         editorCallback: (editor: Editor) => this.insertCodeBlock(editor, lang),
       });
     }
+
+    // 3. 清理失效语言命令：删除/改名语言后旧命令不再残留在面板与快捷键列表
+    if (this.langCommandIds) {
+      for (const oldId of this.langCommandIds) {
+        if (!newIds.has(oldId)) {
+          try {
+            (this.app.commands as any).removeCommand(`${PLUGIN_ID}:${oldId}`);
+          } catch (e) {}
+        }
+      }
+    }
+    this.langCommandIds = newIds;
   }
 
   // ================================================================
@@ -241,6 +284,7 @@ export default class QuickCodeBlockPlugin extends Plugin {
     const hm = (this.app as any).hotkeyManager;
     if (!hm) return;
     let migrated = 0;
+    let failed = 0;
     for (const { lang, hotkey } of list) {
       const fullId = `${PLUGIN_ID}:insert-codeblock-${lang}`;
       try {
@@ -250,13 +294,24 @@ export default class QuickCodeBlockPlugin extends Plugin {
         hm.setHotkeys(fullId, [hotkey]);
         migrated++;
       } catch (e) {
+        failed++;
         console.error(`[quick-codeblock] 迁移 ${lang} 快捷键失败:`, e);
       }
     }
-    if (migrated > 0 && typeof hm.save === "function") {
-      try {
-        Promise.resolve(hm.save()).catch(() => {});
-      } catch {}
+    // 全部旧条目已落定（迁移成功或原生已有绑定）→ 清理 data.json 旧版死键：
+    // 不清理的话，用户删掉迁移来的快捷键后重启会被重新绑回
+    if (failed === 0) {
+      let persisted = migrated === 0; // 原生已有 = hotkeys.json 早已持久化
+      if (migrated > 0 && typeof hm.save === "function") {
+        try {
+          await Promise.resolve(hm.save());
+          persisted = true;
+        } catch {
+          persisted = false;
+        }
+      }
+      // 仅在原生配置确认落盘后清键；保存失败保留死键下次重试
+      if (persisted) await this.saveSettings();
     }
     this.legacyHotkeys = [];
   }
@@ -268,8 +323,18 @@ export default class QuickCodeBlockPlugin extends Plugin {
     const selection = editor.getSelection();
 
     if (selection) {
-      // 保留选中内容原样（含缩进）
-      const block = "```" + lang + "\n" + selection + "\n```";
+      // 包裹选中：与无选中路径对齐处理换行——
+      // 选区起点同行前有内容 / 终点同行后有内容时补 \n，避免代码栅栏嵌进段落中间导致渲染破损
+      const from = editor.getCursor("from");
+      const to = editor.getCursor("to");
+      const beforeText = editor.getLine(from.line).substring(0, from.ch);
+      const afterText = editor.getLine(to.line).substring(to.ch);
+      // 选区终点恰在行首：尾部 \n 只是行分隔符（由包裹重新提供），去掉一个防块内双空行
+      let body = selection;
+      if (to.ch === 0 && body.endsWith("\n")) body = body.slice(0, -1);
+      let block = "```" + lang + "\n" + body + "\n```";
+      if (beforeText.trim() !== "") block = "\n" + block;
+      if (afterText.trim() !== "") block = block + "\n";
       editor.replaceSelection(block);
       return;
     }
@@ -409,6 +474,7 @@ class CodeBlockSettingTab extends PluginSettingTab {
 
     // 标准头（官方要求 setHeading，禁止直接创建 h2/h3）
     new Setting(containerEl).setName(this.t("setting_title")).setHeading();
+    containerEl.createDiv({ cls: "qcb-desc", text: this.t("setting_header_desc") });
 
     // ---- 界面语言切换器（顶部）----
     new Setting(containerEl)
@@ -508,8 +574,8 @@ class CodeBlockSettingTab extends PluginSettingTab {
       text.onChange(async (value) => {
         const v = value.trim();
         plugin.settings.langs[index] = v;
-        await plugin.saveSettings();
-        if (v) plugin.registerCommands(); // 空值不注册（命令 id 非法）
+        // 防抖写盘；停止输入后统一重注册（空值不注册，diff 同时清掉对应旧命令）
+        plugin.debouncedSaveLangSettings();
       });
     });
 
@@ -539,6 +605,8 @@ class CodeBlockSettingTab extends PluginSettingTab {
         .onClick(async () => {
           plugin.settings.langs.splice(index, 1);
           await plugin.saveSettings();
+          // 立即重注册，diff 清掉被删语言的命令（否则旧命令仍可触发）
+          plugin.registerCommands();
           this.display();
         })
     );

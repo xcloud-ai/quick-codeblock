@@ -12,7 +12,7 @@ Quickly insert Markdown code blocks with automatic cursor positioning. Wrap sele
 ## 功能特性
 
 - **快捷插入代码块**：插入 ` ```lang ` 代码块，光标自动定位到块内空行，直接开始写代码
-- **选中文本包裹**：选中一段文字，触发命令，自动用代码块包裹（保留原有缩进）
+- **选中文本包裹**：选中一段文字，触发命令，自动用代码块包裹（保留原有缩进，跨行选区智能换行）
 - **独立语言命令**：在设置中添加语言，每个语言注册独立命令，可分别绑定快捷键（默认内置 python / shell / yaml / json）
 - **语言选择弹窗**：「插入代码块（选择语言）」命令弹出列表点选，未配置语言时插入无语言代码块
 - **系统原生快捷键**：设置面板一键「打开设置快捷键」，自动定位到系统快捷键设置页对应命令，冲突由系统原生提示
@@ -21,7 +21,7 @@ Quickly insert Markdown code blocks with automatic cursor positioning. Wrap sele
 ### Features
 
 - Quick code block insertion with auto cursor positioning
-- Selected text wrapping (indentation preserved)
+- Selected text wrapping (indentation preserved, smart multi-line handling)
 - One independent command per language added in settings (built-in defaults: python, shell, yaml, json), each bindable to its own hotkey
 - Language picker modal for easy selection (falls back to a plain code block when no language is configured)
 - Native hotkey settings integration: one click to open and locate the command; conflicts are flagged by Obsidian itself
