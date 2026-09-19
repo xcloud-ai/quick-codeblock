@@ -29,18 +29,18 @@ Quickly insert Markdown code blocks with automatic cursor positioning. Wrap sele
 
 ## 安装
 
-### 方式一：从 Obsidian 社区目录安装(推荐)
+### 方式一：从 Obsidian 社区目录安装（推荐）
 
 1. 打开 Obsidian 设置 → 社区插件
-2. 点击"浏览"，搜索 "XU Quick CodeBlock"
-3. 点击"安装"，然后"启用"
+2. 点击「浏览」，搜索 "XU Quick CodeBlock"
+3. 点击「安装」，然后「启用」
 
 ### 方式二：手动安装
 
 1. 从 [最新 Release](https://github.com/xcloud-ai/quick-codeblock/releases) 下载 `main.js`、`manifest.json`、`styles.css` 三个文件
 2. 在 vault 中创建目录 `.obsidian/plugins/quick-codeblock/`
 3. 将三个文件放入该目录
-4. 打开 Obsidian 设置 → 社区插件，找到 "XU Quick CodeBlock" 并开启
+4. 打开 Obsidian 设置 → 社区插件，找到 XU Quick CodeBlock 并开启
 
 ### Installation
 
